@@ -1,62 +1,92 @@
 import { useFrame } from '@react-three/fiber'
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import type { Group } from 'three'
 import type { WatchDesign } from '../../model/watchDesign'
 import { polar } from '../2d/geometry'
 import { SUBDIAL_DIST, SUBDIAL_R, dialLayout } from '../dialLayout'
 import { contrastInk } from '../dialPrint'
+import { gmtHandParts, handParts } from '../handParts'
 import { dims3d } from './dims'
 import { useLumeGlow } from './night'
-import { dauphineGeometry, extrude, handShape } from './shapes'
+import { dauphineGeometry, partsGeometry } from './shapes'
 import { useDisposable } from './useDisposable'
 
-function useHandGeometry(style: WatchDesign['hands']['style'], l: number, w: number) {
-  return useDisposable(
-    () => (style === 'dauphine' ? dauphineGeometry(l, w) : extrude(handShape(style, l, w), 0.08, 0.05, 0.05, 2)),
-    [style, l, w],
+interface HandSpec {
+  kind: 'hour' | 'minute' | 'gmt'
+  style: WatchDesign['hands']['style']
+  length: number
+  width: number
+  lume: boolean
+}
+
+/** Metal hand with its lume recessed into the channels cut through it. */
+function HandMesh({ spec, color, lumeColor }: { spec: HandSpec; color: string; lumeColor: string }) {
+  const { kind, style, length: l, width: w, lume } = spec
+  const parts = useMemo(
+    () => (kind === 'gmt' ? gmtHandParts(l, w) : handParts(style, kind, l, w, lume)),
+    [kind, style, l, w, lume],
+  )
+  // Dauphine hands are faceted solids rather than flat extrusions.
+  const faceted = kind !== 'gmt' && style === 'dauphine'
+  const body = useDisposable(() => (faceted ? dauphineGeometry(l, w) : partsGeometry(parts.body, 0.08, 0.05)), [parts, faceted])
+  const fill = useDisposable(() => partsGeometry(parts.lume, 0.06, 0), [parts])
+  const glow = useLumeGlow(1.4)
+  return (
+    <>
+      {body && (
+        <mesh geometry={body} castShadow>
+          <meshPhysicalMaterial color={color} metalness={0.85} roughness={0.16} />
+        </mesh>
+      )}
+      {fill && (
+        <mesh geometry={fill}>
+          <meshStandardMaterial color={lumeColor} roughness={0.6} {...glow} />
+        </mesh>
+      )}
+    </>
   )
 }
 
 /**
- * Hour, minute and seconds hands, stacked above the dial and driven by the clock
- * every frame. On a chronograph the center seconds hand is the stopwatch hand,
- * so it rests at 12 and the small seconds subdial runs instead.
+ * Hour, minute, GMT and seconds hands, stacked above the dial and driven by the
+ * clock every frame. On a chronograph the center seconds hand is the stopwatch
+ * hand, so it rests at 12 and the small seconds subdial runs instead.
  */
 export function Hands3D({ design }: { design: WatchDesign }) {
   const { dialR: r } = dims3d(design)
-  const { style, color, secondsColor } = design.hands
+  const { style, color, secondsColor, lume } = design.hands
+  const { gmt, gmtColor, subdialColor } = design.complications
   const layout = dialLayout(design)
   const chrono = layout.subdials.length > 0
   const hour = useRef<Group>(null)
   const minute = useRef<Group>(null)
+  const gmtHand = useRef<Group>(null)
   const second = useRef<Group>(null)
   const smallSecond = useRef<Group>(null)
-  const hourGeo = useHandGeometry(style, r * 0.52, r * 0.085)
-  const minuteGeo = useHandGeometry(style, r * 0.82, r * 0.065)
-  const glow = useLumeGlow(1.2)
+  const lumeColor = design.indices.color
 
   useFrame(() => {
     const now = new Date()
     // Mechanical sweep: 8 small steps per second.
     const s = now.getSeconds() + Math.floor(now.getMilliseconds() / 125) / 8
     const m = now.getMinutes() + s / 60
-    const h = (now.getHours() % 12) + m / 60
+    const h24 = now.getHours() + m / 60
     const secondsAngle = (-s * Math.PI) / 30
-    if (hour.current) hour.current.rotation.z = (-h * Math.PI) / 6
+    if (hour.current) hour.current.rotation.z = (-(h24 % 12) * Math.PI) / 6
     if (minute.current) minute.current.rotation.z = (-m * Math.PI) / 30
+    if (gmtHand.current) gmtHand.current.rotation.z = (-h24 * Math.PI) / 12
     if (second.current) second.current.rotation.z = chrono ? 0 : secondsAngle
     if (smallSecond.current) smallSecond.current.rotation.z = secondsAngle
   })
 
-  const handMaterial = <meshPhysicalMaterial color={color} metalness={0.85} roughness={0.16} {...glow} />
-  const hub = (radius: number) => (
+  const sr = r * SUBDIAL_R
+  const subInk = contrastInk(subdialColor)
+  const hub = (radius: number, c: string) => (
     <mesh rotation-x={Math.PI / 2} position-z={0.05}>
       <cylinderGeometry args={[radius, radius, 0.2, 32]} />
-      {handMaterial}
+      <meshPhysicalMaterial color={c} metalness={0.85} roughness={0.16} />
     </mesh>
   )
-  const sr = r * SUBDIAL_R
-  const subInk = contrastInk(design.complications.subdialColor)
 
   return (
     <group>
@@ -76,18 +106,19 @@ export function Hands3D({ design }: { design: WatchDesign }) {
         )
       })}
       <group ref={hour} position-z={0.45}>
-        <mesh geometry={hourGeo} castShadow>
-          {handMaterial}
-        </mesh>
-        {hub(r * 0.06)}
+        <HandMesh spec={{ kind: 'hour', style, length: r * 0.52, width: r * 0.085, lume }} color={color} lumeColor={lumeColor} />
+        {hub(r * 0.06, color)}
       </group>
-      <group ref={minute} position-z={0.75}>
-        <mesh geometry={minuteGeo} castShadow>
-          {handMaterial}
-        </mesh>
-        {hub(r * 0.05)}
+      {gmt && (
+        <group ref={gmtHand} position-z={0.62}>
+          <HandMesh spec={{ kind: 'gmt', style, length: r * 0.93, width: r * 0.05, lume: true }} color={gmtColor} lumeColor={lumeColor} />
+        </group>
+      )}
+      <group ref={minute} position-z={0.8}>
+        <HandMesh spec={{ kind: 'minute', style, length: r * 0.82, width: r * 0.065, lume }} color={color} lumeColor={lumeColor} />
+        {hub(r * 0.05, color)}
       </group>
-      <group ref={second} position-z={1.0}>
+      <group ref={second} position-z={1.05}>
         <mesh position-y={r * 0.35} castShadow>
           <boxGeometry args={[0.2, r * 1.1, 0.08]} />
           <meshPhysicalMaterial color={secondsColor} metalness={0.5} roughness={0.3} />

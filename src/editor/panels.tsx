@@ -47,11 +47,24 @@ function BezelPanel() {
   const [b, set] = useSection('bezel')
   return (
     <>
-      <OptionGroup label="Type" options={BEZEL_TYPES} value={b.type} onChange={(type) => set({ type })} />
+      <OptionGroup
+        label="Type"
+        options={BEZEL_TYPES}
+        value={b.type}
+        labels={{ gmt: 'GMT 24h' }}
+        onChange={(type) => set({ type })}
+      />
       {b.type !== 'none' && <ColorField label="Bezel metal" value={b.color} onChange={(color) => set({ color })} />}
-      {b.type === 'dive' && (
+      {(b.type === 'dive' || b.type === 'gmt') && (
         <>
-          <ColorField label="Insert" value={b.insertColor} onChange={(insertColor) => set({ insertColor })} />
+          <ColorField
+            label={b.type === 'gmt' ? 'Insert, top half' : 'Insert'}
+            value={b.insertColor}
+            onChange={(insertColor) => set({ insertColor })}
+          />
+          {b.type === 'gmt' && (
+            <ColorField label="Insert, bottom half" value={b.insertColor2} onChange={(insertColor2) => set({ insertColor2 })} />
+          )}
           <ColorField label="Markings" value={b.markingColor} onChange={(markingColor) => set({ markingColor })} />
         </>
       )}
@@ -99,6 +112,9 @@ function HandsPanel() {
       <OptionGroup label="Style" options={HAND_STYLES} value={h.style} onChange={(style) => set({ style })} />
       <ColorField label="Hour & minute" value={h.color} onChange={(color) => set({ color })} />
       <ColorField label="Seconds" value={h.secondsColor} onChange={(secondsColor) => set({ secondsColor })} />
+      {h.style !== 'dauphine' && (
+        <Toggle label="Lume inserts (glow at night)" checked={h.lume} onChange={(lume) => set({ lume })} />
+      )}
     </>
   )
 }
@@ -114,6 +130,9 @@ function ComplicationsPanel() {
         labels={{ '3h': '3 o’clock', '6h': '6 o’clock' }}
         onChange={(date) => set({ date })}
       />
+      {c.date !== 'none' && (
+        <Toggle label="Date magnifier (cyclops)" checked={c.cyclops} onChange={(cyclops) => set({ cyclops })} />
+      )}
       <OptionGroup
         label="Chronograph"
         options={CHRONO_LAYOUTS}
@@ -124,6 +143,8 @@ function ComplicationsPanel() {
       {c.chrono !== 'none' && (
         <ColorField label="Subdial color" value={c.subdialColor} onChange={(subdialColor) => set({ subdialColor })} />
       )}
+      <Toggle label="GMT hand (second time zone)" checked={c.gmt} onChange={(gmt) => set({ gmt })} />
+      {c.gmt && <ColorField label="GMT hand color" value={c.gmtColor} onChange={(gmtColor) => set({ gmtColor })} />}
     </>
   )
 }

@@ -36,8 +36,11 @@ export function dialAnisotropyTexture(d: WatchDesign) {
   return toTexture(paintAnisotropy(d, 512), false)
 }
 
-/** 60-minute dive scale for a RingGeometry whose inner radius is `innerFrac` of its outer radius. */
-export function diveInsertTexture(b: WatchDesign['bezel'], innerFrac: number, size = 2048) {
+/**
+ * Bezel insert for a RingGeometry whose inner radius is `innerFrac` of its outer
+ * radius: a 60-minute dive scale, or a two-tone 24-hour GMT scale.
+ */
+export function bezelInsertTexture(b: WatchDesign['bezel'], innerFrac: number, size = 2048) {
   const { c, ctx } = canvas2d(size, size)
   const r = size / 2
   ctx.translate(r, r)
@@ -47,19 +50,40 @@ export function diveInsertTexture(b: WatchDesign['bezel'], innerFrac: number, si
 
   ctx.fillStyle = b.insertColor
   ctx.fillRect(-r, -r, size, size)
+  if (b.type === 'gmt') {
+    // Colors split along the 6–18 line.
+    ctx.fillStyle = b.insertColor2
+    ctx.fillRect(-r, 0, size, r)
+  }
   ctx.fillStyle = b.markingColor
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.font = `700 ${band * 0.55}px ${SANS}`
+  const triangle = () => {
+    ctx.beginPath()
+    ctx.moveTo(-band * 0.38, -r * 0.97)
+    ctx.lineTo(band * 0.38, -r * 0.97)
+    ctx.lineTo(0, -inner * 1.04)
+    ctx.fill()
+  }
+
+  if (b.type === 'gmt') {
+    for (let hour = 0; hour < 24; hour++) {
+      ctx.save()
+      ctx.rotate((hour * Math.PI) / 12)
+      if (hour === 0) triangle()
+      else if (hour % 2 === 0) ctx.fillText(String(hour), 0, -mid)
+      else ctx.fillRect(-band * 0.05, -(mid + band * 0.2), band * 0.1, band * 0.4)
+      ctx.restore()
+    }
+    return toTexture(c)
+  }
+
   for (let i = 0; i < 60; i++) {
     ctx.save()
     ctx.rotate((i * Math.PI) / 30)
     if (i === 0) {
-      ctx.beginPath()
-      ctx.moveTo(-band * 0.38, -r * 0.97)
-      ctx.lineTo(band * 0.38, -r * 0.97)
-      ctx.lineTo(0, -inner * 1.04)
-      ctx.fill()
+      triangle()
     } else if (i % 10 === 0) {
       ctx.fillText(String(i), 0, -mid)
     } else if (i % 5 === 0) {

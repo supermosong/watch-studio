@@ -209,6 +209,38 @@ export function paintDial(d: WatchDesign, size: number, { print }: { print: bool
   return c
 }
 
+/**
+ * What the cyclops shows: the date window and its frame, magnified to fill a
+ * w × h px canvas, with a little dial around it.
+ */
+export function paintMagnifiedDate(w: number, h: number, dialColor: string, frameColor: string) {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  const ctx = c.getContext('2d')
+  if (!ctx) throw new Error('2D canvas is not available')
+  ctx.fillStyle = shade(dialColor, -0.1)
+  ctx.fillRect(0, 0, w, h)
+  const frame = ctx.createLinearGradient(0, 0, w, h)
+  frame.addColorStop(0, shade(frameColor, 0.4))
+  frame.addColorStop(1, shade(frameColor, -0.3))
+  ctx.fillStyle = frame
+  ctx.fillRect(w * 0.04, h * 0.04, w * 0.92, h * 0.92)
+  const [ww, wh] = [w * 0.8, h * 0.78]
+  const wheel = ctx.createLinearGradient(0, (h - wh) / 2, 0, (h + wh) / 2)
+  wheel.addColorStop(0, '#c9c6bf')
+  wheel.addColorStop(0.25, '#f4f2ec')
+  wheel.addColorStop(1, '#f4f2ec')
+  ctx.fillStyle = wheel
+  ctx.fillRect((w - ww) / 2, (h - wh) / 2, ww, wh)
+  ctx.fillStyle = '#151515'
+  ctx.font = `700 ${wh * 0.78}px ${SANS}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(String(new Date().getDate()), w / 2, h / 2 + wh * 0.04)
+  return c
+}
+
 /** Glow mask for printed numerals (white on black), or null when nothing printed glows. */
 export function paintLumeMask(d: WatchDesign, size: number) {
   if (d.indices.type !== 'arabic' && d.indices.type !== 'roman') return null

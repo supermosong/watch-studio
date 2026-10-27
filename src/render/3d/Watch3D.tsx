@@ -4,26 +4,11 @@ import type { Ref } from 'react'
 import type { WatchDesign } from '../../model/watchDesign'
 import { Bezel3D } from './Bezel3D'
 import { Case3D } from './Case3D'
+import { Crystal3D } from './Crystal3D'
 import { Dial3D } from './Dial3D'
-import { CASE_TOP, dims3d } from './dims'
 import { Hands3D } from './Hands3D'
 import { NightContext } from './night'
 import { Strap3D } from './Strap3D'
-
-/** Domed sapphire crystal: a shallow spherical cap with glass transmission. */
-function Crystal({ design }: { design: WatchDesign }) {
-  const { hasBezel, bezelInner, dialR } = dims3d(design)
-  const a = hasBezel ? bezelInner + 0.5 : dialR + 1.2
-  const baseZ = hasBezel ? CASE_TOP + 1.8 : CASE_TOP + 0.7
-  const h = 0.9
-  const sphereR = (a * a + h * h) / (2 * h)
-  return (
-    <mesh position-z={baseZ + h - sphereR} rotation-x={Math.PI / 2}>
-      <sphereGeometry args={[sphereR, 160, 24, 0, Math.PI * 2, 0, Math.asin(a / sphereR)]} />
-      <meshPhysicalMaterial transmission={1} thickness={0.6} ior={1.5} roughness={0} metalness={0} />
-    </mesh>
-  )
-}
 
 /**
  * Studio lighting. Metal is mostly reflection, so the light panels in the
@@ -85,9 +70,9 @@ export default function Watch3D({ design, night = false, ref }: Props) {
         <Bezel3D design={design} />
         <Dial3D design={design} />
         <Hands3D design={design} />
-        <Crystal design={design} />
+        <Crystal3D design={design} />
       </NightContext>
-      <OrbitControls makeDefault enablePan={false} enableDamping minDistance={70} maxDistance={300} target={[0, 0, -4]} />
+      <OrbitControls makeDefault enablePan={false} enableDamping minDistance={45} maxDistance={300} target={[0, 0, -4]} />
     </Canvas>
   )
 }

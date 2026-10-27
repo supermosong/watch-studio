@@ -5,10 +5,10 @@ export const CASE_FINISHES = ['polished', 'brushed', 'matte'] as const
 export const DIAL_FINISHES = ['sunburst', 'plain', 'guilloche', 'carbon'] as const
 export const DATE_POSITIONS = ['none', '3h', '6h'] as const
 export const CHRONO_LAYOUTS = ['none', 'bicompax', 'tricompax'] as const
-export const BEZEL_TYPES = ['none', 'smooth', 'fluted', 'dive'] as const
+export const BEZEL_TYPES = ['none', 'smooth', 'fluted', 'dive', 'gmt'] as const
 export const CROWN_SIZES = ['small', 'medium', 'large'] as const
 export const INDEX_TYPES = ['baton', 'dots', 'arabic', 'roman', 'none'] as const
-export const HAND_STYLES = ['baton', 'sword', 'dauphine'] as const
+export const HAND_STYLES = ['baton', 'sword', 'dauphine', 'mercedes', 'snowflake', 'arrow', 'cathedral'] as const
 export const STRAP_TYPES = ['leather', 'rubber', 'metal', 'nato'] as const
 
 export const DIAMETER_MIN = 34
@@ -32,6 +32,8 @@ export const watchDesignSchema = z.object({
     type: z.enum(BEZEL_TYPES),
     color: hexColor,
     insertColor: hexColor,
+    /** Bottom half of a two-tone GMT insert (insertColor is the top half). */
+    insertColor2: hexColor.default('#1a1a1a'),
     markingColor: hexColor,
   }),
   crown: z.object({
@@ -49,8 +51,13 @@ export const watchDesignSchema = z.object({
       date: z.enum(DATE_POSITIONS),
       chrono: z.enum(CHRONO_LAYOUTS),
       subdialColor: hexColor,
+      /** Magnifier ("cyclops") on the crystal over the date window. */
+      cyclops: z.boolean().default(false),
+      /** 24-hour hand for a second time zone. */
+      gmt: z.boolean().default(false),
+      gmtColor: hexColor.default('#d6402b'),
     })
-    .default({ date: 'none', chrono: 'none', subdialColor: '#1a1a1a' }),
+    .default({ date: 'none', chrono: 'none', subdialColor: '#1a1a1a', cyclops: false, gmt: false, gmtColor: '#d6402b' }),
   indices: z.object({
     type: z.enum(INDEX_TYPES),
     color: hexColor,
@@ -60,6 +67,8 @@ export const watchDesignSchema = z.object({
     style: z.enum(HAND_STYLES),
     color: hexColor,
     secondsColor: hexColor,
+    /** Luminous inserts in the hour and minute hands. */
+    lume: z.boolean().default(false),
   }),
   strap: z.object({
     type: z.enum(STRAP_TYPES),
@@ -78,12 +87,12 @@ export function createDefaultDesign(): WatchDesign {
     name: 'My Watch',
     version: 1,
     case: { shape: 'round', diameter: 40, color: '#c9ccd1', finish: 'polished' },
-    bezel: { type: 'smooth', color: '#c9ccd1', insertColor: '#1c2a44', markingColor: '#f4f4f4' },
+    bezel: { type: 'smooth', color: '#c9ccd1', insertColor: '#1c2a44', insertColor2: '#1a1a1a', markingColor: '#f4f4f4' },
     crown: { size: 'medium', guards: false },
     dial: { color: '#1f3a5f', finish: 'sunburst', logoText: 'MERIDIAN', logoColor: '#f4f4f4' },
-    complications: { date: '3h', chrono: 'none', subdialColor: '#1a1a1a' },
+    complications: { date: '3h', chrono: 'none', subdialColor: '#1a1a1a', cyclops: false, gmt: false, gmtColor: '#d6402b' },
     indices: { type: 'baton', color: '#f4f4f4', minuteTrack: true },
-    hands: { style: 'sword', color: '#f4f4f4', secondsColor: '#e0452b' },
+    hands: { style: 'sword', color: '#f4f4f4', secondsColor: '#e0452b', lume: true },
     strap: { type: 'leather', color: '#6b3f24', accentColor: '#e8d9c0' },
   }
 }

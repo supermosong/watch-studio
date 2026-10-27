@@ -37,7 +37,28 @@ describe('watch design model', () => {
     const parsed = parseDesign(legacy)
     expect(parsed?.case.finish).toBe('polished')
     expect(parsed?.dial.finish).toBe('sunburst')
-    expect(parsed?.complications).toEqual({ date: 'none', chrono: 'none', subdialColor: '#1a1a1a' })
+    expect(parsed?.complications).toEqual({
+      date: 'none',
+      chrono: 'none',
+      subdialColor: '#1a1a1a',
+      cyclops: false,
+      gmt: false,
+      gmtColor: '#d6402b',
+    })
+  })
+
+  it('designs saved before GMT, cyclops and hand lume existed still load, with defaults', () => {
+    const d = createDefaultDesign()
+    const legacy = {
+      ...d,
+      bezel: { type: 'dive', color: '#c9ccd1', insertColor: '#111111', markingColor: '#f4f4f4' },
+      complications: { date: '3h', chrono: 'none', subdialColor: '#1a1a1a' },
+      hands: { style: 'sword', color: '#f4f4f4', secondsColor: '#e0452b' },
+    }
+    const parsed = parseDesign(legacy)
+    expect(parsed?.bezel.insertColor2).toBe('#1a1a1a')
+    expect(parsed?.complications).toMatchObject({ date: '3h', cyclops: false, gmt: false })
+    expect(parsed?.hands.lume).toBe(false)
   })
 
   it('preset designs get fresh ids and do not share state', () => {

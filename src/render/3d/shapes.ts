@@ -1,5 +1,7 @@
 import { BoxGeometry, BufferGeometry, ExtrudeGeometry, Float32BufferAttribute, Path, Shape, Vector2 } from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { WatchDesign } from '../../model/watchDesign'
+import type { HandPart } from '../handParts'
 
 const TAU = Math.PI * 2
 
@@ -16,20 +18,22 @@ export function withHole(shape: Shape, r: number) {
   return shape
 }
 
-function roundedSquare(half: number, radius: number) {
-  const [h, r] = [half, radius]
+export function roundedRect(halfW: number, halfH: number, radius: number) {
+  const [w, h, r] = [halfW, halfH, radius]
   const s = new Shape()
-  s.moveTo(-h + r, -h)
-  s.lineTo(h - r, -h)
-  s.absarc(h - r, -h + r, r, -Math.PI / 2, 0, false)
-  s.lineTo(h, h - r)
-  s.absarc(h - r, h - r, r, 0, Math.PI / 2, false)
-  s.lineTo(-h + r, h)
-  s.absarc(-h + r, h - r, r, Math.PI / 2, Math.PI, false)
-  s.lineTo(-h, -h + r)
-  s.absarc(-h + r, -h + r, r, Math.PI, Math.PI * 1.5, false)
+  s.moveTo(-w + r, -h)
+  s.lineTo(w - r, -h)
+  s.absarc(w - r, -h + r, r, -Math.PI / 2, 0, false)
+  s.lineTo(w, h - r)
+  s.absarc(w - r, h - r, r, 0, Math.PI / 2, false)
+  s.lineTo(-w + r, h)
+  s.absarc(-w + r, h - r, r, Math.PI / 2, Math.PI, false)
+  s.lineTo(-w, -h + r)
+  s.absarc(-w + r, -h + r, r, Math.PI, Math.PI * 1.5, false)
   return s
 }
+
+const roundedSquare = (half: number, radius: number) => roundedRect(half, half, radius)
 
 /** Case outline whose 3 o'clock edge is `extent` from the center. */
 export function caseOutline(shape: WatchDesign['case']['shape'], extent: number): Shape {
@@ -114,24 +118,33 @@ export function slopedRingGeometry(inner: number, outer: number, height: number,
   return geo
 }
 
-/** Flat hand outline pointing to 12 o'clock and pivoting on (0, 0). */
-export function handShape(style: 'baton' | 'sword', l: number, w: number) {
-  const pts =
-    style === 'baton'
-      ? [
-          [-w / 2, -0.12 * l],
-          [w / 2, -0.12 * l],
-          [w / 2, l],
-          [-w / 2, l],
-        ]
-      : [
-          [-0.3 * w, -0.1 * l],
-          [0.3 * w, -0.1 * l],
-          [0.55 * w, 0.72 * l],
-          [0, l],
-          [-0.55 * w, 0.72 * l],
-        ]
-  return new Shape(pts.map(([x, y]) => new Vector2(x, y)))
+function partShape(part: HandPart): Shape {
+  if (part.kind === 'poly') {
+    const s = new Shape(part.points.map(([x, y]) => new Vector2(x, y)))
+    for (const hole of part.holes ?? []) s.holes.push(new Path(hole.map(([x, y]) => new Vector2(x, y))))
+    return s
+  }
+  const s = new Shape()
+  s.absarc(part.cx, part.cy, part.r, 0, TAU, false)
+  if (part.hole) {
+    const hole = new Path()
+    hole.absarc(part.cx, part.cy, part.hole, 0, TAU, true)
+    s.holes.push(hole)
+  }
+  return s
+}
+
+/** Extrudes hand outlines (see handParts) into one geometry, or null when there are none. */
+export function partsGeometry(parts: HandPart[], depth: number, bevel: number) {
+  if (!parts.length) return null
+  const pieces = parts.map((p) =>
+    bevel > 0
+      ? extrude(partShape(p), depth, bevel, bevel, 2)
+      : new ExtrudeGeometry(partShape(p), { depth, bevelEnabled: false, curveSegments: 48 }),
+  )
+  const merged = mergeGeometries(pieces)
+  for (const piece of pieces) piece.dispose()
+  return merged
 }
 
 /** Dauphine hand: four flat facets meeting at a raised center ridge, so it catches light two-tone. */

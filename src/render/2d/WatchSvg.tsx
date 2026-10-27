@@ -2,6 +2,7 @@ import { useId, type Ref } from 'react'
 import type { WatchDesign } from '../../model/watchDesign'
 import { Bezel } from './Bezel'
 import { Case } from './Case'
+import { Cyclops } from './Cyclops'
 import { Dial } from './Dial'
 import { Hands } from './Hands'
 import { Strap } from './Strap'
@@ -44,6 +45,7 @@ export function WatchSvg({ design, time, ref, className }: Props) {
         <Bezel design={design} uid={uid} />
         <Dial design={design} uid={uid} />
         <Hands design={design} uid={uid} time={time} />
+        <Cyclops design={design} day={time.getDate()} />
         <g clipPath={`url(#${uid}-crystal)`} pointerEvents="none">
           <ellipse
             cx={-dialR * 0.35}
