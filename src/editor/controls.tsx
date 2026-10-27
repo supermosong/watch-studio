@@ -1,4 +1,5 @@
-import { useId, type ReactNode } from 'react'
+import { useId, type CSSProperties, type ReactNode } from 'react'
+import { shade } from '../lib/color'
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: ReactNode }) {
   return (
@@ -11,8 +12,20 @@ function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; 
   )
 }
 
-export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function ColorField({
+  label,
+  value,
+  swatches,
+  onChange,
+}: {
+  label: string
+  value: string
+  /** Named one-click colors, e.g. metals. */
+  swatches?: Readonly<Record<string, string>>
+  onChange: (v: string) => void
+}) {
   const id = useId()
+  const named = swatches && Object.keys(swatches).find((name) => swatches[name].toLowerCase() === value.toLowerCase())
   return (
     <Field label={label} htmlFor={id}>
       <div className="flex items-center gap-3 rounded-lg border border-stone-700 bg-stone-900 p-1.5 pr-3">
@@ -23,8 +36,27 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
           onChange={(e) => onChange(e.target.value)}
           className="h-8 w-12 cursor-pointer rounded border-0 bg-transparent"
         />
-        <span className="font-mono text-sm text-stone-300">{value.toUpperCase()}</span>
+        <span className="font-mono text-sm text-stone-300">{named ?? value.toUpperCase()}</span>
       </div>
+      {swatches && (
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(swatches).map(([name, hex]) => (
+            <button
+              key={name}
+              type="button"
+              title={name}
+              aria-label={name}
+              aria-pressed={name === named}
+              onClick={() => onChange(hex)}
+              className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${
+                name === named ? 'border-amber-400' : 'border-stone-700'
+              }`}
+              // A diagonal sheen so each swatch reads as metal rather than paint.
+              style={{ background: `linear-gradient(135deg, ${shade(hex, 0.4)}, ${hex} 45%, ${shade(hex, -0.35)})` }}
+            />
+          ))}
+        </div>
+      )}
     </Field>
   )
 }
@@ -34,6 +66,7 @@ export function OptionGroup<T extends string>({
   options,
   value,
   labels,
+  styles,
   onChange,
 }: {
   label: string
@@ -41,6 +74,8 @@ export function OptionGroup<T extends string>({
   value: T
   /** Display text per option; defaults to the option itself. */
   labels?: Partial<Record<T, string>>
+  /** Inline style per option, e.g. to show a font in its own typeface. */
+  styles?: Partial<Record<T, CSSProperties>>
   onChange: (v: T) => void
 }) {
   return (
@@ -53,6 +88,7 @@ export function OptionGroup<T extends string>({
             role="radio"
             aria-checked={opt === value}
             onClick={() => onChange(opt)}
+            style={styles?.[opt]}
             className={`rounded-lg border px-3 py-1.5 text-sm capitalize transition-colors ${
               opt === value
                 ? 'border-amber-400 bg-amber-400/15 text-amber-200'
@@ -119,11 +155,13 @@ export function TextField({
   label,
   value,
   maxLength,
+  placeholder,
   onChange,
 }: {
   label: string
   value: string
   maxLength: number
+  placeholder?: string
   onChange: (v: string) => void
 }) {
   const id = useId()
@@ -134,8 +172,9 @@ export function TextField({
         type="text"
         value={value}
         maxLength={maxLength}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100 outline-none focus:border-amber-400"
+        className="w-full rounded-lg border border-stone-700 bg-stone-900 px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-amber-400"
       />
     </Field>
   )

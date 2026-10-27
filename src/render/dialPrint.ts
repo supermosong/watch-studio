@@ -1,8 +1,18 @@
 import { luminance, shade } from '../lib/color'
 import type { WatchDesign } from '../model/watchDesign'
 import { polar } from './2d/geometry'
-import { DATE_H, DATE_W, SUBDIAL_DIST, SUBDIAL_R, dialLayout, type SubdialKind } from './dialLayout'
-import { ROMAN, SANS, SERIF } from './typography'
+import {
+  DATE_H,
+  DATE_W,
+  SECTOR_RING,
+  SMOKE_EDGE,
+  SMOKE_START,
+  SUBDIAL_DIST,
+  SUBDIAL_R,
+  dialLayout,
+  type SubdialKind,
+} from './dialLayout'
+import { ROMAN, SANS, SERIF, dialText, dialTextStyle } from './typography'
 
 type Ctx = CanvasRenderingContext2D
 
@@ -80,6 +90,27 @@ function paintFinish(ctx: Ctx, r: number, color: string, finish: WatchDesign['di
         ctx.fillRect(x, y, cell, cell)
       }
     }
+  }
+}
+
+/** The dial's finish in its color style: one color, smoked toward the rim, or a two-color sector ring. */
+function paintSurface(ctx: Ctx, r: number, dial: WatchDesign['dial']) {
+  paintFinish(ctx, r, dial.color, dial.finish)
+  if (dial.tone === 'sector') {
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(0, 0, r * SECTOR_RING[1], 0, Math.PI * 2)
+    ctx.arc(0, 0, r * SECTOR_RING[0], 0, Math.PI * 2, true)
+    ctx.clip()
+    paintFinish(ctx, r, dial.color2, dial.finish)
+    ctx.restore()
+  }
+  if (dial.tone === 'smoked') {
+    const smoke = ctx.createRadialGradient(0, 0, r * SMOKE_START, 0, 0, r)
+    smoke.addColorStop(0, 'rgba(0,0,0,0)')
+    smoke.addColorStop(1, `rgba(0,0,0,${SMOKE_EDGE})`)
+    ctx.fillStyle = smoke
+    ctx.fillRect(-r, -r, 2 * r, 2 * r)
   }
 }
 
@@ -170,13 +201,13 @@ function paintNumerals(ctx: Ctx, r: number, d: WatchDesign, hidden: Set<number>,
 
 /**
  * Paints the dial face. The background layer (finish, subdials, date window) is
- * always painted; `print` adds the minute track, numerals and logo, which the
+ * always painted; `print` adds the minute track, numerals and lettering, which the
  * 2D renderer draws as vectors instead. Fractions of the radius match both renderers.
  */
 export function paintDial(d: WatchDesign, size: number, { print }: { print: boolean }) {
   const { c, ctx, r } = centeredCanvas(size)
   const layout = dialLayout(d)
-  paintFinish(ctx, r, d.dial.color, d.dial.finish)
+  paintSurface(ctx, r, d.dial)
   for (const s of layout.subdials) paintSubdial(ctx, r, s.hour, s.kind, d.complications.subdialColor)
   if (layout.date) paintDateWindow(ctx, r, layout.date.angle, layout.date.dist)
   if (!print) return c
@@ -197,14 +228,34 @@ export function paintDial(d: WatchDesign, size: number, { print }: { print: bool
     }
     ctx.globalAlpha = 1
   }
+  if (d.dial.tone === 'sector') {
+    // Fine printed rings where the color zones meet.
+    ctx.strokeStyle = ink
+    ctx.globalAlpha = 0.75
+    ctx.lineWidth = r * 0.005
+    for (const t of SECTOR_RING) {
+      ctx.beginPath()
+      ctx.arc(0, 0, r * t, 0, Math.PI * 2)
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+  }
   paintNumerals(ctx, r, d, layout.hiddenHours, ink)
-  if (d.dial.logoText) {
-    ctx.fillStyle = d.dial.logoColor
-    ctx.font = `600 ${r * 0.095}px ${SANS}`
-    ctx.letterSpacing = `${r * 0.02}px`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(d.dial.logoText, 0, -r * 0.4)
+
+  const { logoText, subText, logoColor, font } = d.dial
+  const lines = [
+    { text: logoText, line: 'logo', y: -0.4 },
+    { text: subText, line: 'sub', y: layout.subTextY },
+  ] as const
+  ctx.fillStyle = logoColor
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  for (const { text, line, y } of lines) {
+    if (!text) continue
+    const f = dialTextStyle(font, r, line)
+    ctx.font = `${f.weight} ${f.size}px ${f.family}`
+    ctx.letterSpacing = `${f.spacing}px`
+    ctx.fillText(dialText(font, text), 0, r * y)
   }
   return c
 }

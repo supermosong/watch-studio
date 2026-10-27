@@ -1,3 +1,4 @@
+import { shade } from '../lib/color'
 import type { WatchDesign } from '../model/watchDesign'
 
 /** Subdial center distance and radius, as fractions of the dial radius. */
@@ -6,6 +7,11 @@ export const SUBDIAL_R = 0.22
 /** Date window size, as fractions of the dial radius. */
 export const DATE_W = 0.17
 export const DATE_H = 0.13
+/** Sector dials: the hour ring between these fractions of the dial radius takes the second color. */
+export const SECTOR_RING = [0.56, 0.9] as const
+/** Smoked dials: clear inside SMOKE_START of the radius, then darkening to SMOKE_EDGE black at the rim. */
+export const SMOKE_START = 0.3
+export const SMOKE_EDGE = 0.85
 
 export type SubdialKind = 'seconds' | 'minutes' | 'hours'
 
@@ -16,6 +22,8 @@ export interface DialLayout {
   date: { angle: number; dist: number } | null
   /** Hour positions (0 = 12) whose index or numeral is left off to make room. */
   hiddenHours: Set<number>
+  /** Center of the second line of text, as a fraction of the dial radius (positive = below center). */
+  subTextY: number
 }
 
 /**
@@ -50,5 +58,14 @@ export function dialLayout(d: WatchDesign): DialLayout {
       hiddenHours.add(hour)
     }
   }
-  return { subdials, date: window, hiddenHours }
+  // Above 6 o'clock, unless a subdial is there; then tucked under the logo.
+  const subTextY = subdials.some((s) => s.hour === 6) ? -0.29 : 0.3
+  return { subdials, date: window, hiddenHours, subTextY }
+}
+
+/** The dial's base color at distance t (a fraction of the dial radius) from the center. */
+export function dialColorAt(dial: WatchDesign['dial'], t: number): string {
+  if (dial.tone === 'sector') return t >= SECTOR_RING[0] && t < SECTOR_RING[1] ? dial.color2 : dial.color
+  if (dial.tone === 'smoked') return shade(dial.color, -SMOKE_EDGE * Math.max(0, (t - SMOKE_START) / (1 - SMOKE_START)))
+  return dial.color
 }

@@ -7,13 +7,17 @@ import {
   CROWN_SIZES,
   DATE_POSITIONS,
   DIAL_FINISHES,
+  DIAL_FONTS,
+  DIAL_TONES,
   DIAMETER_MAX,
   DIAMETER_MIN,
   HAND_STYLES,
   INDEX_TYPES,
+  METALS,
   STRAP_TYPES,
   type WatchSection,
 } from '../model/watchDesign'
+import { dialTextStyle } from '../render/typography'
 import { useDesignStore } from '../store/designStore'
 import { ColorField, OptionGroup, Slider, TextField, Toggle } from './controls'
 
@@ -37,7 +41,7 @@ function CasePanel() {
         value={c.diameter}
         onChange={(diameter) => set({ diameter })}
       />
-      <ColorField label="Metal" value={c.color} onChange={(color) => set({ color })} />
+      <ColorField label="Metal" value={c.color} swatches={METALS} onChange={(color) => set({ color })} />
       <OptionGroup label="Finish" options={CASE_FINISHES} value={c.finish} onChange={(finish) => set({ finish })} />
     </>
   )
@@ -54,7 +58,9 @@ function BezelPanel() {
         labels={{ gmt: 'GMT 24h' }}
         onChange={(type) => set({ type })}
       />
-      {b.type !== 'none' && <ColorField label="Bezel metal" value={b.color} onChange={(color) => set({ color })} />}
+      {b.type !== 'none' && (
+        <ColorField label="Bezel metal" value={b.color} swatches={METALS} onChange={(color) => set({ color })} />
+      )}
       {(b.type === 'dive' || b.type === 'gmt') && (
         <>
           <ColorField
@@ -82,14 +88,33 @@ function CrownPanel() {
   )
 }
 
+// Each font option is shown in its own typeface.
+const FONT_PREVIEW = Object.fromEntries(DIAL_FONTS.map((f) => [f, { fontFamily: dialTextStyle(f, 1, 'logo').family }]))
+
 function DialPanel() {
   const [d, set] = useSection('dial')
   return (
     <>
       <ColorField label="Dial color" value={d.color} onChange={(color) => set({ color })} />
       <OptionGroup label="Finish" options={DIAL_FINISHES} value={d.finish} onChange={(finish) => set({ finish })} />
+      <OptionGroup
+        label="Color style"
+        options={DIAL_TONES}
+        value={d.tone}
+        labels={{ sector: 'Sector (two-tone)' }}
+        onChange={(tone) => set({ tone })}
+      />
+      {d.tone === 'sector' && <ColorField label="Hour ring color" value={d.color2} onChange={(color2) => set({ color2 })} />}
       <TextField label="Logo text" maxLength={16} value={d.logoText} onChange={(logoText) => set({ logoText })} />
-      <ColorField label="Logo color" value={d.logoColor} onChange={(logoColor) => set({ logoColor })} />
+      <TextField
+        label="Second line"
+        maxLength={20}
+        placeholder="e.g. AUTOMATIC or 200m"
+        value={d.subText}
+        onChange={(subText) => set({ subText })}
+      />
+      <OptionGroup label="Font" options={DIAL_FONTS} value={d.font} styles={FONT_PREVIEW} onChange={(font) => set({ font })} />
+      <ColorField label="Text color" value={d.logoColor} onChange={(logoColor) => set({ logoColor })} />
     </>
   )
 }
@@ -152,12 +177,18 @@ function ComplicationsPanel() {
 function StrapPanel() {
   const [s, set] = useSection('strap')
   const accentLabel = { leather: 'Stitching', rubber: 'Accent', metal: 'Center links', nato: 'Stripes' }[s.type]
+  const metal = s.type === 'metal'
   return (
     <>
       <OptionGroup label="Type" options={STRAP_TYPES} value={s.type} onChange={(type) => set({ type })} />
-      <ColorField label="Color" value={s.color} onChange={(color) => set({ color })} />
+      <ColorField label="Color" value={s.color} swatches={metal ? METALS : undefined} onChange={(color) => set({ color })} />
       {s.type !== 'rubber' && (
-        <ColorField label={accentLabel} value={s.accentColor} onChange={(accentColor) => set({ accentColor })} />
+        <ColorField
+          label={accentLabel}
+          value={s.accentColor}
+          swatches={metal ? METALS : undefined}
+          onChange={(accentColor) => set({ accentColor })}
+        />
       )}
     </>
   )

@@ -61,6 +61,12 @@ describe('watch design model', () => {
     expect(parsed?.hands.lume).toBe(false)
   })
 
+  it('designs saved before dial tones, fonts and the second text line existed still load, with defaults', () => {
+    const d = createDefaultDesign()
+    const parsed = parseDesign({ ...d, dial: { color: '#1f3a5f', finish: 'plain', logoText: 'OLD', logoColor: '#f4f4f4' } })
+    expect(parsed?.dial).toMatchObject({ tone: 'solid', font: 'sans', subText: '', logoText: 'OLD' })
+  })
+
   it('preset designs get fresh ids and do not share state', () => {
     const a = presetDesign('Diver')
     const b = presetDesign('Diver')

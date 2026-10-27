@@ -1,27 +1,27 @@
 import { useMemo } from 'react'
 import { shade } from '../../lib/color'
 import type { WatchDesign } from '../../model/watchDesign'
-import { dialLayout } from '../dialLayout'
+import { SECTOR_RING, dialLayout } from '../dialLayout'
 import { paintDial } from '../dialPrint'
-import { ROMAN, SANS, SERIF } from '../typography'
+import { ROMAN, SANS, SERIF, dialText, dialTextStyle } from '../typography'
 import { getGeometry, polar } from './geometry'
 
 /**
- * Dial disc, minute track, hour indices and logo. The finish, subdials and date
+ * Dial disc, minute track, hour indices and lettering. The finish, subdials and date
  * window are painted to a bitmap (shared with the 3D view); the rest stays vector.
  */
 export function Dial({ design, uid }: { design: WatchDesign; uid: string }) {
   const { dialR: r } = getGeometry(design)
-  const { color, finish, logoText, logoColor } = design.dial
+  const { color, finish, tone, color2, logoText, logoColor, font, subText } = design.dial
   const { type, color: ink, minuteTrack } = design.indices
   const { date, chrono, subdialColor } = design.complications
   const edge = shade(color, -0.4)
-  const { hiddenHours } = dialLayout(design)
+  const { hiddenHours, subTextY } = dialLayout(design)
   const background = useMemo(
     () => paintDial(design, 1024, { print: false }).toDataURL('image/png'),
     // Only what the bitmap paints.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [color, finish, date, chrono, subdialColor],
+    [color, finish, tone, color2, date, chrono, subdialColor],
   )
 
   const hourIndex = (i: number) => {
@@ -95,22 +95,35 @@ export function Dial({ design, uid }: { design: WatchDesign; uid: string }) {
           )
         })}
 
+      {tone === 'sector' &&
+        SECTOR_RING.map((t) => <circle key={t} r={r * t} fill="none" stroke={ink} strokeOpacity={0.75} strokeWidth={1} />)}
+
       {Array.from({ length: 12 }, (_, i) => hourIndex(i))}
 
-      {logoText && (
-        <text
-          y={-r * 0.4}
-          fill={logoColor}
-          fontSize={r * 0.095}
-          fontFamily={SANS}
-          fontWeight={600}
-          letterSpacing={r * 0.02}
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          {logoText}
-        </text>
-      )}
+      {(
+        [
+          { text: logoText, line: 'logo', y: -0.4 },
+          { text: subText, line: 'sub', y: subTextY },
+        ] as const
+      ).map(({ text, line, y }) => {
+        if (!text) return null
+        const f = dialTextStyle(font, r, line)
+        return (
+          <text
+            key={line}
+            y={r * y}
+            fill={logoColor}
+            fontSize={f.size}
+            fontFamily={f.family}
+            fontWeight={f.weight}
+            letterSpacing={f.spacing}
+            textAnchor="middle"
+            dominantBaseline="central"
+          >
+            {dialText(font, text)}
+          </text>
+        )
+      })}
     </g>
   )
 }

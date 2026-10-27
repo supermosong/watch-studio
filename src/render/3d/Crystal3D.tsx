@@ -1,7 +1,7 @@
 import { CanvasTexture, SRGBColorSpace } from 'three'
 import type { WatchDesign } from '../../model/watchDesign'
 import { polar } from '../2d/geometry'
-import { DATE_H, DATE_W, dialLayout } from '../dialLayout'
+import { DATE_H, DATE_W, dialColorAt, dialLayout } from '../dialLayout'
 import { paintMagnifiedDate } from '../dialPrint'
 import { CASE_TOP, dims3d } from './dims'
 import { extrude, roundedRect } from './shapes'
@@ -28,6 +28,7 @@ export function Crystal3D({ design }: { design: WatchDesign }) {
       {design.complications.cyclops && date && (
         <Cyclops
           design={design}
+          dialColor={dialColorAt(design.dial, date.dist)}
           center={polar(dialR * date.dist, date.angle)}
           // Height of the dome's surface above the date window.
           surfaceZ={apexZ - (sphereR - Math.sqrt(sphereR ** 2 - (dialR * date.dist) ** 2))}
@@ -44,7 +45,18 @@ const LENS_BEVEL = 0.5
  * A pillow-shaped lens glued to the crystal. Inside it floats the magnified
  * image of the date window, which is what a real cyclops shows you.
  */
-function Cyclops({ design, center, surfaceZ }: { design: WatchDesign; center: { x: number; y: number }; surfaceZ: number }) {
+function Cyclops({
+  design,
+  dialColor,
+  center,
+  surfaceZ,
+}: {
+  design: WatchDesign
+  /** The dial around the date window, which the lens also magnifies. */
+  dialColor: string
+  center: { x: number; y: number }
+  surfaceZ: number
+}) {
   const { dialR: r } = dims3d(design)
   const [w, h] = [r * DATE_W * MAGNIFY, r * DATE_H * MAGNIFY]
   const lens = useDisposable(
@@ -52,10 +64,10 @@ function Cyclops({ design, center, surfaceZ }: { design: WatchDesign; center: { 
     [w, h],
   )
   const image = useDisposable(() => {
-    const t = new CanvasTexture(paintMagnifiedDate(512, Math.round((512 * h) / w), design.dial.color, design.case.color))
+    const t = new CanvasTexture(paintMagnifiedDate(512, Math.round((512 * h) / w), dialColor, design.case.color))
     t.colorSpace = SRGBColorSpace
     return t
-  }, [w, h, design.dial.color, design.case.color])
+  }, [w, h, dialColor, design.case.color])
 
   return (
     <group position={[center.x, -center.y, 0]}>

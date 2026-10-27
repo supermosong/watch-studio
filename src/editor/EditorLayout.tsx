@@ -69,6 +69,7 @@ export function EditorLayout() {
   const [exportError, setExportError] = useState<string | null>(null)
   const [view, setView] = useViewMode()
   const [night, setNight] = useState(false)
+  const [spin, setSpin] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   useUndoShortcuts()
@@ -158,23 +159,38 @@ export function EditorLayout() {
             ))}
           </div>
           {view === '3d' && (
-            <button
-              type="button"
-              aria-pressed={night}
-              onClick={() => setNight(!night)}
-              title="Turn the lights off to see the lume glow"
-              className={`absolute right-4 top-4 z-10 rounded-lg border px-3 py-1 text-sm transition-colors ${
-                night
-                  ? 'border-emerald-300/60 bg-emerald-300/15 text-emerald-200'
-                  : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
-              }`}
-            >
-              ☾ Lume
-            </button>
+            <div className="absolute right-4 top-4 z-10 flex gap-1.5">
+              <button
+                type="button"
+                aria-pressed={spin}
+                onClick={() => setSpin(!spin)}
+                title="Spin the watch slowly; turn it off to stop at the angle you like"
+                className={`rounded-lg border px-3 py-1 text-sm transition-colors ${
+                  spin
+                    ? 'border-amber-400/60 bg-amber-400/15 text-amber-200'
+                    : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                ⟳ Turntable
+              </button>
+              <button
+                type="button"
+                aria-pressed={night}
+                onClick={() => setNight(!night)}
+                title="Turn the lights off to see the lume glow"
+                className={`rounded-lg border px-3 py-1 text-sm transition-colors ${
+                  night
+                    ? 'border-emerald-300/60 bg-emerald-300/15 text-emerald-200'
+                    : 'border-stone-700 bg-stone-900/80 text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                ☾ Lume
+              </button>
+            </div>
           )}
           {view === '3d' ? (
             <Suspense fallback={<p className="text-sm text-stone-400">Loading 3D studio…</p>}>
-              <Watch3D ref={canvasRef} design={design} night={night} />
+              <Watch3D ref={canvasRef} design={design} night={night} spin={spin} />
               <p className="pointer-events-none absolute bottom-3 text-xs text-stone-500">Drag to rotate · scroll to zoom</p>
             </Suspense>
           ) : (

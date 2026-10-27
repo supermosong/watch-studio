@@ -34,7 +34,7 @@ export function Dial3D({ design }: { design: WatchDesign }) {
   const night = useContext(NightContext)
   const layout = dialLayout(design)
   // Only what the textures paint; other edits must not repaint them.
-  const paintDeps = [dial.color, dial.finish, dial.logoText, dial.logoColor, indices.type, indices.color, indices.minuteTrack, complications.date, complications.chrono, complications.subdialColor]
+  const paintDeps = [dial.color, dial.finish, dial.tone, dial.color2, dial.logoText, dial.logoColor, dial.font, dial.subText, indices.type, indices.color, indices.minuteTrack, complications.date, complications.chrono, complications.subdialColor]
   const texture = useDisposable(() => dialTexture(design), paintDeps)
   const anisotropy = useDisposable(() => dialAnisotropyTexture(design), [dial.finish, complications.chrono])
   const lumeMap = useDisposable(() => dialLumeTexture(design), [indices.type, complications.date, complications.chrono])

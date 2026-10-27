@@ -1,6 +1,7 @@
 import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
-import { Canvas } from '@react-three/fiber'
-import type { Ref } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useRef, type ReactNode, type Ref } from 'react'
+import type { Group } from 'three'
 import type { WatchDesign } from '../../model/watchDesign'
 import { Bezel3D } from './Bezel3D'
 import { Case3D } from './Case3D'
@@ -46,15 +47,28 @@ function Studio({ night }: { night: boolean }) {
   )
 }
 
+const TURN_SECONDS = 24
+
+/** Spins the watch under the studio lights while `spin` is on; stopping leaves it where it is. */
+function Turntable({ spin, children }: { spin: boolean; children: ReactNode }) {
+  const ref = useRef<Group>(null)
+  useFrame((_, delta) => {
+    if (spin && ref.current) ref.current.rotation.y += (delta * Math.PI * 2) / TURN_SECONDS
+  })
+  return <group ref={ref}>{children}</group>
+}
+
 interface Props {
   design: WatchDesign
   /** Lights off: only the lume glows. */
   night?: boolean
+  /** Turntable: the watch spins slowly on its own (dragging still works). */
+  spin?: boolean
   /** The WebGL canvas, for PNG export. */
   ref?: Ref<HTMLCanvasElement>
 }
 
-export default function Watch3D({ design, night = false, ref }: Props) {
+export default function Watch3D({ design, night = false, spin = false, ref }: Props) {
   return (
     <Canvas
       ref={ref}
@@ -65,12 +79,14 @@ export default function Watch3D({ design, night = false, ref }: Props) {
     >
       <Studio night={night} />
       <NightContext value={night}>
-        <Strap3D design={design} />
-        <Case3D design={design} />
-        <Bezel3D design={design} />
-        <Dial3D design={design} />
-        <Hands3D design={design} />
-        <Crystal3D design={design} />
+        <Turntable spin={spin}>
+          <Strap3D design={design} />
+          <Case3D design={design} />
+          <Bezel3D design={design} />
+          <Dial3D design={design} />
+          <Hands3D design={design} />
+          <Crystal3D design={design} />
+        </Turntable>
       </NightContext>
       <OrbitControls makeDefault enablePan={false} enableDamping minDistance={45} maxDistance={300} target={[0, 0, -4]} />
     </Canvas>
